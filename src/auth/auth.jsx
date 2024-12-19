@@ -1,27 +1,61 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Global from "../global/global";
+import axios from "axios";
 
 const Auth = () => {
+  const location = useLocation();
   const navigate = useNavigate();
 
+  const spoty_url = `https://accounts.spotify.com/authorize?client_id=${Global.client_id}&response_type=code&redirect_uri=${Global.redirect_uri}&scope=${Global.scopes}`;
+
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-
-    if (!token) {
-      // Si no hay token, inicia el proceso de autenticación
-      const clientId = '318f57c6f0cb4e609b36948374583a22';
-      const redirectUri = 'http://localhost:3001/callback';
-      const scope = 'user-read-private user-read-email playlist-read-private';
-
-      const authUrl = `https://accounts.spotify.com/authorize?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${encodeURIComponent(redirectUri)}`;  window.location.href = authUrl;
-      //navigate(authUrl);
-    } else {
-      // Si ya hay un token, redirige al usuario a la página principal
-      navigate('/home');
+    const urlParams = new URLSearchParams(location.search);
+    const spotyCode = urlParams.get("code");
+    if (spotyCode) {
+      autenticateUser(spotyCode);
     }
-  }, [navigate]);
+  }, [location]); // Se agrega location como dependencia
 
-  return <div>Redirigiendo a Spotify para autenticación...</div>;
+  const autenticateUser = (spotyCode) => {
+    const searchParams = new URLSearchParams({
+      code: spotyCode,
+      grant_type: "authorization_code",
+      redirect_uri: Global.redirect_uri,
+      client_id: Global.client_id,
+      client_secret: Global.client_secret,
+    });
+
+    axios
+      .post("https://accounts.spotify.com/api/token", searchParams)
+      .then((res) => {
+        console.log("Token recibido:", res.data);
+        localStorage.setItem("access_token", res.data.access_token);
+        localStorage.setItem("refresh_token", res.data.refresh_token);
+        navigate("/home");
+        console.log("Buien")
+      })
+      .catch((error) => {
+        console.error("Error durante la autenticación:", error);
+      });
+  };
+
+  const login = () => {
+    window.location.replace(spoty_url); // Redirige al usuario a la página de login de Spotify
+  };
+
+  return (
+    <div className="general">
+      <h3>
+        Redirigiendo a Spotify para autenticación...
+        <br />
+        Visualiza toda la información de tu perfil de Spotify
+      </h3>
+      <button onClick={login} id="btnLogin" className="btnLogin">
+        INICIAR SESION
+      </button>
+    </div>
+  );
 };
 
 export default Auth;
